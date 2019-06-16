@@ -8,6 +8,7 @@ import (
 	"os"
 
 	// Package image/{jpeg,gif,png} is not used explicitly in the code below
+
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/png"
@@ -35,7 +36,7 @@ type PImage struct {
 	height       int
 	width        int
 	clusterCount uint
-	colorMap     map[ColorPoint]colorMapVal
+	colorMap     map[ColorPoint]*colorMapVal
 	colorList    []*ColorPoint
 	clusterList  []*ColorPoint
 	pixelList    []*PixelPoint
@@ -63,7 +64,7 @@ func NewPImage(filename string, clusterCount uint) *PImage {
 
 	pimage := &PImage{
 		imgType:      imgType,
-		colorMap:     map[ColorPoint]colorMapVal{},
+		colorMap:     map[ColorPoint]*colorMapVal{},
 		colorList:    make([]*ColorPoint, 0),
 		clusterList:  make([]*ColorPoint, 0),
 		pixelList:    make([]*PixelPoint, 0),
@@ -81,7 +82,7 @@ func NewPImage(filename string, clusterCount uint) *PImage {
 			cmv, ok := pimage.colorMap[*p]
 			if !ok {
 				pimage.colorList = append(pimage.colorList, p)
-				cmv = colorMapVal{
+				cmv = &colorMapVal{
 					colorPoint: p,
 					index:      -1,
 				}
@@ -104,6 +105,65 @@ func NewPImage(filename string, clusterCount uint) *PImage {
 	return pimage
 }
 
+// SaveFile saves the image to a file
+func (p *PImage) SaveFile(name string) {
+	filename := name + "." + getImageTypeExt(p.imgType)
+
+	imgRect := image.Rect(0, 0, p.width, p.height)
+	img := image.NewRGBA(imgRect)
+
+	// color the image
+	for _, pp := range p.pixelList {
+		cmv := p.colorMap[*pp.color]
+		cp := p.clusterList[cmv.index]
+		img.SetRGBA(int(pp.x), int(pp.y), cp.ToColor())
+	}
+
+	saveJPEG(filename, img)
+}
+
+func (p *PImage) runClusteringStep() {
+	for _, cp := range p.colorList {
+		closest := cp.Distance(p.clusterList[0])
+		closestCluster := 0
+
+		for i := 1; i < len(p.clusterList); i++ {
+			t := cp.Distance(p.clusterList[i])
+			if t < closest {
+				closest = t
+				closestCluster = i
+			}
+		}
+
+		cmv := p.colorMap[*cp]
+		cmv.index = closestCluster
+	}
+
+	for i, cp := range p.clusterList {
+		var sr float64
+		var sg float64
+		var sb float64
+		var n uint64
+
+		for k, v := range p.colorMap {
+			if v.index != i {
+				continue
+			}
+			sr += float64(k.r)
+			sg += float64(k.g)
+			sb += float64(k.b)
+			n++
+		}
+
+		sr, sg, sb = sr/float64(n), sg/float64(n), sb/float64(n)
+		cp.r = uint8(sr)
+		cp.g = uint8(sg)
+		cp.b = uint8(sb)
+	}
+
+	fmt.Println("Clustering Step Done!")
+}
+
 func getNfromM(n int, m int) []int {
 
 	pickedColors := map[int]bool{}
@@ -119,18 +179,6 @@ func getNfromM(n int, m int) []int {
 	}
 
 	return ret
-}
-
-// SaveFile saves the image to a file
-func (p *PImage) SaveFile(name string) {
-	filename := name + "." + getImageTypeExt(p.imgType)
-
-	imgRect := image.Rect(0, 0, p.width, p.height)
-	img := image.NewRGBA(imgRect)
-
-	// color the image
-
-	saveJPEG(filename, img)
 }
 
 func saveJPEG(filename string, img image.Image) {
@@ -178,11 +226,13 @@ func getImageType(t string) ImageType {
 // Run runs
 func Run() {
 
-	pimage := NewPImage("./img.jpg", 3)
-	fmt.Println(len(pimage.colorMap))
-	fmt.Println(len(pimage.pixelList))
-	fmt.Println(len(pimage.colorList))
-	fmt.Println(len(pimage.clusterList))
+	pimage := NewPImage("./img.jpg", 10)
+	// fmt.Println(len(pimage.colorMap))
+	// fmt.Println(len(pimage.pixelList))
+	// fmt.Println(len(pimage.colorList))
+	// fmt.Println(len(pimage.clusterList))
 
-	// pimage.SaveFile("xxx")
+	pimage.runClusteringStep()
+
+	pimage.SaveFile("xxx")
 }
