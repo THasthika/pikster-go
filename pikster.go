@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"image"
 	"log"
+	"math"
 	"math/rand"
 	"os"
 
 	// Package image/{jpeg,gif,png} is not used explicitly in the code below
-
 	_ "image/gif"
-	"image/jpeg"
 	_ "image/png"
+
+	"image/jpeg"
 )
 
 // ImageType is the type of image
@@ -122,7 +123,7 @@ func (p *PImage) SaveFile(name string) {
 	saveJPEG(filename, img)
 }
 
-func (p *PImage) runClusteringStep() {
+func (p *PImage) runClusteringStep() int {
 	for _, cp := range p.colorList {
 		closest := cp.Distance(p.clusterList[0])
 		closestCluster := 0
@@ -139,11 +140,17 @@ func (p *PImage) runClusteringStep() {
 		cmv.index = closestCluster
 	}
 
+	var totalChange = 0
+
 	for i, cp := range p.clusterList {
 		var sr float64
 		var sg float64
 		var sb float64
 		var n uint64
+
+		prevR := cp.r
+		prevG := cp.g
+		prevB := cp.b
 
 		for k, v := range p.colorMap {
 			if v.index != i {
@@ -159,9 +166,15 @@ func (p *PImage) runClusteringStep() {
 		cp.r = uint8(sr)
 		cp.g = uint8(sg)
 		cp.b = uint8(sb)
+
+		totalChange += int(math.Abs(float64(prevR-cp.r)) + math.Abs(float64(prevG-cp.g)) + math.Abs(float64(prevB-cp.b)))
 	}
 
+	fmt.Printf("change: %d\n", totalChange)
+
 	fmt.Println("Clustering Step Done!")
+
+	return totalChange
 }
 
 func getNfromM(n int, m int) []int {
@@ -226,13 +239,17 @@ func getImageType(t string) ImageType {
 // Run runs
 func Run() {
 
-	pimage := NewPImage("./img.jpg", 10)
+	pimage := NewPImage("./img2.jpg", 5)
 	// fmt.Println(len(pimage.colorMap))
 	// fmt.Println(len(pimage.pixelList))
 	// fmt.Println(len(pimage.colorList))
 	// fmt.Println(len(pimage.clusterList))
 
-	pimage.runClusteringStep()
+	for i := 0; i < 100; i++ {
+		if pimage.runClusteringStep() == 0 {
+			break
+		}
+	}
 
 	pimage.SaveFile("xxx")
 }
