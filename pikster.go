@@ -43,8 +43,7 @@ type PImage struct {
 	pixelList    []*PixelPoint
 }
 
-// NewPImage creates a new PImage structure given an image path
-func NewPImage(filename string, clusterCount uint) *PImage {
+func NewPImageFromFile(filename string, clusterCount uint) *PImage {
 	reader, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
@@ -61,10 +60,14 @@ func NewPImage(filename string, clusterCount uint) *PImage {
 		log.Fatal("Unknown image Type")
 	}
 
+	return NewPImageFromImage(img, imgType, clusterCount)
+}
+
+func NewPImageFromImage(img image.Image, imageType ImageType, clusterCount uint) *PImage {
 	bounds := img.Bounds()
 
 	pimage := &PImage{
-		imgType:      imgType,
+		imgType:      imageType,
 		colorMap:     map[ColorPoint]*colorMapVal{},
 		colorList:    make([]*ColorPoint, 0),
 		clusterList:  make([]*ColorPoint, 0),
@@ -123,7 +126,7 @@ func (p *PImage) SaveFile(name string) {
 	saveJPEG(filename, img)
 }
 
-func (p *PImage) runClusteringStep() int {
+func (p *PImage) RunClusteringStep() int {
 	for _, cp := range p.colorList {
 		closest := cp.Distance(p.clusterList[0])
 		closestCluster := 0
@@ -236,20 +239,20 @@ func getImageType(t string) ImageType {
 	return UNKNOWN
 }
 
-// Run runs
-func Run() {
+// // Run runs
+// func Run() {
 
-	pimage := NewPImage("./img2.jpg", 5)
-	// fmt.Println(len(pimage.colorMap))
-	// fmt.Println(len(pimage.pixelList))
-	// fmt.Println(len(pimage.colorList))
-	// fmt.Println(len(pimage.clusterList))
+// 	pimage := NewPImage("./img2.png", 10)
+// 	// fmt.Println(len(pimage.colorMap))
+// 	// fmt.Println(len(pimage.pixelList))
+// 	// fmt.Println(len(pimage.colorList))
+// 	// fmt.Println(len(pimage.clusterList))
 
-	for i := 0; i < 100; i++ {
-		if pimage.runClusteringStep() == 0 {
-			break
-		}
-	}
+// 	for i := 0; i < 100; i++ {
+// 		if pimage.runClusteringStep() == 0 {
+// 			break
+// 		}
+// 	}
 
-	pimage.SaveFile("xxx")
-}
+// 	pimage.SaveFile("xxx")
+// }
